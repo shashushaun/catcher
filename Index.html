@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>しょーんキャッチャー</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #game-container {
+            width: 100%;
+            max-width: 360px;
+            height: 400px;
+            position: relative;
+            background: linear-gradient(to bottom, #87CEEB, #fff);
+            border: 5px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #arm {
+            width: 50px;
+            height: 70px;
+            background: #ff69b4;
+            position: absolute;
+            top: 20px;
+            left: 0;
+            transition: left 0.5s ease, top 1s ease;
+        }
+        #claw-left {
+            width: 15px;
+            height: 30px;
+            background: #ff69b4;
+            position: absolute;
+            bottom: -30px;
+            left: -10px;
+            transition: left 0.5s ease;
+            border-radius: 0 0 5px 5px;
+        }
+        #claw-right {
+            width: 15px;
+            height: 30px;
+            background: #ff69b4;
+            position: absolute;
+            bottom: -30px;
+            right: -10px;
+            transition: right 0.5s ease;
+            border-radius: 0 0 5px 5px;
+        }
+        #character {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            bottom: 50px;
+            left: 150px;
+            transition: left 0.5s ease, top 0.5s ease, bottom 0.5s ease;
+        }
+        #goal {
+            width: 80px;
+            height: 80px;
+            background: #FFD700;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            border-radius: 0 10px 0 0;
+        }
+        .button-container {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="arm">
+            <div id="claw-left"></div>
+            <div id="claw-right"></div>
+        </div>
+        <img id="character" src="https://pbs.twimg.com/profile_images/1890585622500503552/rOXm_mUw_400x400.jpg" alt="しょーん">
+        <div id="goal"></div>
+        <div id="message"></div>
+    </div>
+    <div class="button-container">
+        <button id="startBtn">スタート</button>
+        <button id="stopBtn" disabled>ストップ</button>
+        <button id="grabBtn" disabled>つかむ</button>
+        <button id="retryBtn" style="display:none">もう一回</button>
+    </div>
+
+    <script>
+        const arm = document.getElementById('arm');
+        const clawLeft = document.getElementById('claw-left');
+        const clawRight = document.getElementById('claw-right');
+        const character = document.getElementById('character');
+        const goal = document.getElementById('goal');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const grabBtn = document.getElementById('grabBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const message = document.getElementById('message');
+        let moving = false;
+        let armPos = 0;
+        let direction = 1;
+        let caught = false;
+        let isGrabbing = false;
+
+        startBtn.addEventListener('click', () => {
+            moving = true;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            moveArm();
+        });
+
+        stopBtn.addEventListener('click', () => {
+            moving = false;
+            stopBtn.disabled = true;
+            const characterLeft = parseInt(character.style.left, 10);
+            armPos = characterLeft - (arm.offsetWidth / 2);
+            arm.style.left = armPos + 'px';
+            setTimeout(() => {
+                const gameHeight = 400;
+                const characterBottom = parseInt(window.getComputedStyle(character).bottom, 10);
+                const characterHeight = character.offsetHeight;
+                const clawHeight = clawLeft.offsetHeight;
+                const targetTop = gameHeight - characterBottom - characterHeight - clawHeight;
+                arm.style.top = targetTop + 'px';
+                grabBtn.disabled = false;
+                isGrabbing = true;
+            }, 500);
+        });
+
+        grabBtn.addEventListener('click', () => {
+            if (isGrabbing) {
+                grabBtn.disabled = true;
+                clawLeft.style.left = '-10px';
+                clawRight.style.right = '-10px';
+                setTimeout(() => {
+                    clawLeft.style.left = '15px';
+                    clawRight.style.right = '15px';
+                    checkCatch();
+                    if (caught) {
+                        isGrabbing = false;
+                        character.style.bottom = '';
+                        character.style.top = `${parseInt(arm.style.top) + arm.offsetHeight - clawHeight}px`;
+                        character.style.left = `${armPos + (arm.offsetWidth / 2) - (character.offsetWidth / 2)}px`;
+                        setTimeout(() => {
+                            arm.style.top = '20px';
+                            character.style.top = '20px';
+                            setTimeout(moveToGoal, 1000);
+                        }, 100);
+                    } else {
+                        setTimeout(() => {
+                            clawLeft.style.left = '-10px';
+                            clawRight.style.right = '-10px';
+                            arm.style.top = '20px';
+                            showMessage('残念');
+                            endGame();
+                        }, 500);
+                    }
+                }, 500);
+            }
+        });
+
+        function moveArm() {
+            if (moving) {
+                armPos += 5 * direction;
+                if (armPos >= 310) direction = -1;
+                if (armPos <= 0) direction = 1;
+                arm.style.left = armPos + 'px';
+                requestAnimationFrame(moveArm);
+            }
+        }
+
+        function checkCatch() {
+            const armRect = arm.getBoundingClientRect();
+            const charRect = character.getBoundingClientRect();
+            if (armRect.left + 10 < charRect.right && 
+                armRect.right - 10 > charRect.left &&
+                armRect.bottom >= charRect.top && 
+                armRect.top <= charRect.bottom) {
+                caught = true;
+            }
+        }
+
+        function moveToGoal() {
+            armPos = 0;
+            arm.style.left = armPos + 'px';
+            character.style.left = `${armPos + (arm.offsetWidth / 2) - (character.offsetWidth / 2)}px`;
+            setTimeout(() => {
+                clawLeft.style.left = '-10px';
+                clawRight.style.right = '-10px';
+                character.style.bottom = '10px';
+                character.style.top = '';
+                setTimeout(checkWin, 500);
+            }, 500);
+        }
+
+        function checkWin() {
+            const charRect = character.getBoundingClientRect();
+            const goalRect = goal.getBoundingClientRect();
+            if (charRect.left < goalRect.right && charRect.bottom <= goalRect.bottom) {
+                showMessage('おめでとう！しょーんをゲット！');
+                endGame();
+            }
+        }
+
+        retryBtn.addEventListener('click', () => {
+            resetGame();
+        });
+
+        function showMessage(text) {
+            message.textContent = text;
+            message.style.display = 'block';
+        }
+
+        function endGame() {
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'none';
+            grabBtn.style.display = 'none';
+            retryBtn.style.display = 'inline';
+        }
+
+        function resetGame() {
+            armPos = 0;
+            arm.style.left = '0px';
+            arm.style.top = '20px';
+            clawLeft.style.left = '-10px';
+            clawRight.style.right = '-10px';
+            character.style.left = '150px';
+            character.style.bottom = '50px';
+            character.style.top = '';
+            caught = false;
+            moving = false;
+            isGrabbing = false;
+            message.style.display = 'none';
+            startBtn.style.display = 'inline';
+            stopBtn.style.display = 'inline';
+            grabBtn.style.display = 'inline';
+            retryBtn.style.display = 'none';
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            grabBtn.disabled = true;
+        }
+    </script>
+</body>
+</html>
